@@ -639,6 +639,21 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="mt-20 py-8 border-t border-zinc-200 text-center">
+        <p className="text-zinc-500 text-sm">
+          Built with ❤️ by{' '}
+          <a 
+            href="https://www.linkedin.com/in/adebayo-kareem" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline transition-colors"
+          >
+            Adebayo Kareem
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
