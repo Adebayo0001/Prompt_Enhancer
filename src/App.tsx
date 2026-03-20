@@ -524,7 +524,7 @@ export default function App() {
             <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-200">
               <BrainCircuit className="text-white w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-display font-bold tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight">
               Prompt <span className="gradient-text">Enhancer</span>
             </h1>
           </div>
@@ -578,7 +578,7 @@ export default function App() {
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-5xl font-display font-bold mb-4 tracking-tight"
+            className="text-5xl sm:text-6xl md:text-7xl font-display font-bold mb-6 tracking-tight"
           >
             Instantly Optimize Your <span className="gradient-text">AI Prompts</span>
           </motion.h2>
