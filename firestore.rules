@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: analyses
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required, must match request.auth.uid)
+    //   - originalPrompt: string (required, max 10000 chars)
+    //   - useCase: string (required, max 100 chars)
+    //   - analysis: string (required, JSON stringified, max 50000 chars)
+    //   - createdAt: string (required, ISO 8601 date string)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function isValidAnalysis() {
+      return hasRequiredFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']) &&
+             hasOnlyAllowedFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']) &&
+             validStringLength('userId', 1, 128) &&
+             validStringLength('originalPrompt', 1, 10000) &&
+             validStringLength('useCase', 1, 100) &&
+             validStringLength('analysis', 1, 50000) &&
+             isValidDateString(request.resource.data.createdAt);
+    }
+
+    match /analyses/{analysisId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidAnalysis();
+      allow update: if false; // Analyses are immutable
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+  }
+}

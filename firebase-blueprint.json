@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "Analysis": {
+      "title": "Analysis",
+      "description": "A saved prompt analysis for a user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who created this analysis"
+        },
+        "originalPrompt": {
+          "type": "string",
+          "description": "The original prompt submitted by the user"
+        },
+        "useCase": {
+          "type": "string",
+          "description": "The selected use case for the prompt"
+        },
+        "analysis": {
+          "type": "string",
+          "description": "JSON stringified PromptAnalysis object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the analysis was saved"
+        }
+      },
+      "required": ["userId", "originalPrompt", "useCase", "analysis", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/analyses/{analysisId}": {
+      "schema": {
+        "$ref": "#/entities/Analysis"
+      },
+      "description": "Stores user prompt analyses"
+    }
+  }
+}
