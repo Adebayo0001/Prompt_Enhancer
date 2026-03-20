@@ -296,6 +296,16 @@ export default function App() {
                     <textarea 
                       value={feedbackText}
                       onChange={(e) => setFeedbackText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (!feedbackLoading && feedbackText.trim()) {
+                            // Create a synthetic event or just call the handler directly
+                            // Since handleFeedbackSubmit expects an event, we can pass a fake one
+                            handleFeedbackSubmit({ preventDefault: () => {} } as React.FormEvent);
+                          }
+                        }
+                      }}
                       placeholder="Tell us what you think about the app or prompt analysis..."
                       className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden min-h-[120px] resize-y"
                       required
@@ -610,6 +620,14 @@ export default function App() {
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!loading && input.trim()) {
+                    handleAnalyze();
+                  }
+                }
+              }}
               placeholder="Paste your prompt here... (e.g., 'Write a story about a cat')"
               className="w-full h-40 bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none"
             />
