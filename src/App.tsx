@@ -109,6 +109,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -213,8 +214,14 @@ export default function App() {
     }
   };
 
+  const handleAnalyzeClick = () => {
+    if (!input.trim()) return;
+    setIsContextModalOpen(true);
+  };
+
   const handleAnalyze = async () => {
     if (!input.trim()) return;
+    setIsContextModalOpen(false);
     setLoading(true);
     try {
       const analysis = await analyzePrompt(input, useCase, context);
@@ -378,6 +385,73 @@ export default function App() {
                     Submit Feedback
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Context Modal */}
+      <AnimatePresence>
+        {isContextModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            onClick={() => setIsContextModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden"
+            >
+              <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+                <h2 className="text-xl font-display font-bold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-indigo-600" />
+                  What's your intention?
+                </h2>
+                <button onClick={() => setIsContextModalOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-zinc-600 mb-4">
+                  Provide some context to help us generate the perfect enhanced prompt for you. Who is the target audience? What tone are you aiming for?
+                </p>
+                <textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAnalyze();
+                    }
+                  }}
+                  placeholder="e.g., 'Target audience is 5-year-olds', 'Make it sound professional', 'I want to use this for a marketing email'"
+                  className="w-full h-32 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none mb-6"
+                  autoFocus
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => {
+                      setContext('');
+                      handleAnalyze();
+                    }}
+                    className="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl font-medium transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={handleAnalyze}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    Generate Enhanced Prompt
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -745,38 +819,17 @@ export default function App() {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   if (!loading && input.trim()) {
-                    handleAnalyze();
+                    handleAnalyzeClick();
                   }
                 }
               }}
               placeholder="Paste your prompt here... (e.g., 'Write a story about a cat')"
               className="w-full h-40 bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none"
             />
-            
-            <div className="mt-4">
-              <label className="flex items-center gap-2 text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                <MessageSquare className="w-4 h-4" />
-                Additional Context (Optional)
-              </label>
-              <textarea
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!loading && input.trim()) {
-                      handleAnalyze();
-                    }
-                  }
-                }}
-                placeholder="e.g., 'Target audience is 5-year-olds', 'Make it sound professional', 'I want to use this for a marketing email'"
-                className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none"
-              />
-            </div>
 
             <div className="mt-6 flex justify-end">
               <button
-                onClick={handleAnalyze}
+                onClick={handleAnalyzeClick}
                 disabled={loading || !input.trim()}
                 className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
               >
