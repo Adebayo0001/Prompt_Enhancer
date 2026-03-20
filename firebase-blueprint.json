@@ -28,6 +28,27 @@
         }
       },
       "required": ["userId", "originalPrompt", "useCase", "analysis", "createdAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback on the app or prompt analysis",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who submitted feedback (optional)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The feedback content"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the feedback was submitted"
+        }
+      },
+      "required": ["text", "createdAt"]
     }
   },
   "firestore": {
@@ -36,6 +57,12 @@
         "$ref": "#/entities/Analysis"
       },
       "description": "Stores user prompt analyses"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": {
+        "$ref": "#/entities/Feedback"
+      },
+      "description": "Stores user feedback"
     }
   }
 }

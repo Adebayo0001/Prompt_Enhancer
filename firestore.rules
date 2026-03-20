@@ -57,11 +57,27 @@ service cloud.firestore {
              isValidDateString(request.resource.data.createdAt);
     }
 
+    function isValidFeedback() {
+      let hasRequired = hasRequiredFields(['text', 'createdAt']);
+      let hasOnlyAllowed = hasOnlyAllowedFields(['userId', 'text', 'createdAt']) || hasOnlyAllowedFields(['text', 'createdAt']);
+      let validText = validStringLength('text', 1, 5000);
+      let validDate = isValidDateString(request.resource.data.createdAt);
+      let validUserId = !('userId' in request.resource.data) || validStringLength('userId', 1, 128);
+      
+      return hasRequired && hasOnlyAllowed && validText && validDate && validUserId;
+    }
+
     match /analyses/{analysisId} {
       allow read: if isAuthenticated() && isOwner(resource.data.userId);
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidAnalysis();
       allow update: if false; // Analyses are immutable
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /feedback/{feedbackId} {
+      allow read: if false; // Only admins should read feedback, not implemented yet
+      allow create: if isValidFeedback(); // Anyone can submit feedback
+      allow update, delete: if false; // Feedback is immutable
     }
   }
 }

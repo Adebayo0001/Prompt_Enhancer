@@ -19,7 +19,8 @@ import {
   LogIn,
   LogOut,
   History,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { analyzePrompt, PromptAnalysis } from './services/geminiService';
@@ -103,6 +104,12 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [authMessage, setAuthMessage] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -211,6 +218,31 @@ export default function App() {
     }
   };
 
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedbackText.trim()) return;
+    setFeedbackLoading(true);
+    setFeedbackError('');
+    setFeedbackMessage('');
+    try {
+      await addDoc(collection(db, 'feedback'), {
+        userId: user?.uid || null,
+        text: feedbackText,
+        createdAt: new Date().toISOString()
+      });
+      setFeedbackMessage('Thank you for your feedback!');
+      setTimeout(() => {
+        setIsFeedbackModalOpen(false);
+        setFeedbackText('');
+        setFeedbackMessage('');
+      }, 2000);
+    } catch (error: any) {
+      setFeedbackError(error.message || 'Failed to submit feedback');
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -219,6 +251,72 @@ export default function App() {
 
   return (
     <div className="min-h-screen pb-20">
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {isFeedbackModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            onClick={() => setIsFeedbackModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+                <h2 className="text-xl font-display font-bold">
+                  Send Feedback
+                </h2>
+                <button onClick={() => setIsFeedbackModalOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <div className="p-6">
+                {feedbackError && (
+                  <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <p>{feedbackError}</p>
+                  </div>
+                )}
+                {feedbackMessage && (
+                  <div className="mb-4 p-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                    <p>{feedbackMessage}</p>
+                  </div>
+                )}
+                
+                <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Your Thoughts</label>
+                    <textarea 
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      placeholder="Tell us what you think about the app or prompt analysis..."
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden min-h-[120px] resize-y"
+                      required
+                    />
+                  </div>
+                  
+                  <button 
+                    type="submit" 
+                    disabled={feedbackLoading}
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                  >
+                    {feedbackLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Submit Feedback
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Auth Modal */}
       <AnimatePresence>
         {isAuthModalOpen && (
@@ -421,6 +519,13 @@ export default function App() {
             </h1>
           </div>
           <div className="flex items-center gap-4 text-sm font-medium text-zinc-500">
+            <button 
+              onClick={() => setIsFeedbackModalOpen(true)}
+              className="flex items-center gap-2 hover:text-indigo-600 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">Feedback</span>
+            </button>
             {user ? (
               <>
                 <button 
