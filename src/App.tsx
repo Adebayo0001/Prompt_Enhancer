@@ -25,7 +25,7 @@ import ReactMarkdown from 'react-markdown';
 import { analyzePrompt, PromptAnalysis } from './services/geminiService';
 import { auth, db, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { collection, addDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
 
 const USE_CASES = [
   { id: 'general', label: 'General', icon: Sparkles },
@@ -35,6 +35,57 @@ const USE_CASES = [
   { id: 'image', label: 'Image Gen', icon: ImageIcon },
   { id: 'data', label: 'Data Analysis', icon: BarChart },
 ];
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -57,6 +108,18 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
+
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. ");
+        }
+      }
+    }
+    testConnection();
+
     return () => unsubscribe();
   }, []);
 
@@ -77,7 +140,7 @@ export default function App() {
       }));
       setHistory(historyData);
     }, (error) => {
-      console.error("Error fetching history:", error);
+      handleFirestoreError(error, OperationType.LIST, 'analyses');
     });
     return () => unsubscribe();
   }, [user]);
@@ -129,13 +192,17 @@ export default function App() {
       setResult(analysis);
       
       if (user) {
-        await addDoc(collection(db, 'analyses'), {
-          userId: user.uid,
-          originalPrompt: input,
-          useCase,
-          analysis: JSON.stringify(analysis),
-          createdAt: new Date().toISOString()
-        });
+        try {
+          await addDoc(collection(db, 'analyses'), {
+            userId: user.uid,
+            originalPrompt: input,
+            useCase,
+            analysis: JSON.stringify(analysis),
+            createdAt: new Date().toISOString()
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, 'analyses');
+        }
       }
     } catch (error) {
       console.error('Analysis failed:', error);
