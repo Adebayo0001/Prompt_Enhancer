@@ -48,13 +48,16 @@ service cloud.firestore {
     }
 
     function isValidAnalysis() {
-      return hasRequiredFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']) &&
-             hasOnlyAllowedFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']) &&
-             validStringLength('userId', 1, 128) &&
-             validStringLength('originalPrompt', 1, 10000) &&
-             validStringLength('useCase', 1, 100) &&
-             validStringLength('analysis', 1, 50000) &&
-             isValidDateString(request.resource.data.createdAt);
+      let hasRequired = hasRequiredFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']);
+      let hasOnlyAllowed = hasOnlyAllowedFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt']) || hasOnlyAllowedFields(['userId', 'originalPrompt', 'useCase', 'analysis', 'createdAt', 'context']);
+      let validUserId = validStringLength('userId', 1, 128);
+      let validPrompt = validStringLength('originalPrompt', 1, 10000);
+      let validUseCase = validStringLength('useCase', 1, 100);
+      let validAnalysis = validStringLength('analysis', 1, 50000);
+      let validDate = isValidDateString(request.resource.data.createdAt);
+      let validContext = !('context' in request.resource.data) || validStringLength('context', 0, 10000);
+
+      return hasRequired && hasOnlyAllowed && validUserId && validPrompt && validUseCase && validAnalysis && validDate && validContext;
     }
 
     function isValidFeedback() {

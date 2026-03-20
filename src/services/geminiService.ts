@@ -19,11 +19,12 @@ export interface PromptAnalysis {
   };
 }
 
-export const analyzePrompt = async (prompt: string, useCase: string): Promise<PromptAnalysis> => {
+export const analyzePrompt = async (prompt: string, useCase: string, context?: string): Promise<PromptAnalysis> => {
+  const contextInstruction = context ? `\nAdditional Context from User: "${context}"` : '';
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Analyze and enhance this prompt for the use case: ${useCase}. 
-    User Prompt: "${prompt}"`,
+    User Prompt: "${prompt}"${contextInstruction}`,
     config: {
       thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
       systemInstruction: `You are Prompt Enhancer, an elite AI literacy coach. Your goal is to help users write better prompts by teaching them the "why" behind prompt engineering.

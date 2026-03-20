@@ -21,13 +21,14 @@ import {
   History,
   X,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { analyzePrompt, PromptAnalysis } from './services/geminiService';
 import { auth, db, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { collection, addDoc, query, where, orderBy, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, getDocFromServer, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 const USE_CASES = [
   { id: 'general', label: 'General', icon: Sparkles },
@@ -91,6 +92,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export default function App() {
   const [input, setInput] = useState('');
+  const [context, setContext] = useState('');
   const [useCase, setUseCase] = useState('general');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PromptAnalysis | null>(null);
@@ -114,6 +116,7 @@ export default function App() {
   const [hasCopiedFirstPrompt, setHasCopiedFirstPrompt] = useState(false);
   const [hasInteractedWithUseCase, setHasInteractedWithUseCase] = useState(false);
   const [showUseCaseHint, setShowUseCaseHint] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -214,18 +217,22 @@ export default function App() {
     if (!input.trim()) return;
     setLoading(true);
     try {
-      const analysis = await analyzePrompt(input, useCase);
+      const analysis = await analyzePrompt(input, useCase, context);
       setResult(analysis);
       
       if (user) {
         try {
-          await addDoc(collection(db, 'analyses'), {
+          const docData: any = {
             userId: user.uid,
             originalPrompt: input,
             useCase,
             analysis: JSON.stringify(analysis),
             createdAt: new Date().toISOString()
-          });
+          };
+          if (context.trim()) {
+            docData.context = context;
+          }
+          await addDoc(collection(db, 'analyses'), docData);
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, 'analyses');
         }
@@ -234,6 +241,30 @@ export default function App() {
       console.error('Analysis failed:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteHistoryItem = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'analyses', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `analyses/${id}`);
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    if (!user || history.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      history.forEach((item) => {
+        batch.delete(doc(db, 'analyses', item.id));
+      });
+      await batch.commit();
+      setIsConfirmingClear(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'analyses');
     }
   };
 
@@ -502,9 +533,37 @@ export default function App() {
                   <History className="w-5 h-5 text-indigo-600" />
                   Your History
                 </h2>
-                <button onClick={() => setIsHistoryOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                  <X className="w-5 h-5 text-zinc-500" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {history.length > 0 && (
+                    isConfirmingClear ? (
+                      <div className="flex items-center gap-2 mr-2">
+                        <span className="text-sm text-red-600 font-medium">Are you sure?</span>
+                        <button 
+                          onClick={handleClearAllHistory}
+                          className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Yes, Delete All
+                        </button>
+                        <button 
+                          onClick={() => setIsConfirmingClear(false)}
+                          className="px-3 py-1.5 bg-zinc-100 text-zinc-700 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setIsConfirmingClear(true)}
+                        className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mr-2"
+                      >
+                        Clear All
+                      </button>
+                    )
+                  )}
+                  <button onClick={() => setIsHistoryOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                    <X className="w-5 h-5 text-zinc-500" />
+                  </button>
+                </div>
               </div>
               <div className="p-6 space-y-6">
                 {history.length === 0 ? (
@@ -518,15 +577,23 @@ export default function App() {
                       return null;
                     }
                     return (
-                      <div key={item.id} className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200 cursor-pointer hover:border-indigo-300 transition-colors" onClick={() => {
+                      <div key={item.id} className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200 cursor-pointer hover:border-indigo-300 transition-colors relative group" onClick={() => {
                         setInput(item.originalPrompt);
+                        setContext(item.context || '');
                         setUseCase(item.useCase);
                         setResult(parsedAnalysis);
                         setIsHistoryOpen(false);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}>
-                        <div className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-2">{item.useCase}</div>
-                        <p className="text-sm text-zinc-600 line-clamp-2 mb-3">"{item.originalPrompt}"</p>
+                        <button
+                          onClick={(e) => handleDeleteHistoryItem(e, item.id)}
+                          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete history item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <div className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-2 pr-8">{item.useCase}</div>
+                        <p className="text-sm text-zinc-600 line-clamp-2 mb-3 pr-8">"{item.originalPrompt}"</p>
                         <div className="bg-white rounded-xl p-3 border border-zinc-100">
                           <p className="text-sm font-medium text-zinc-800 line-clamp-2">{parsedAnalysis.rewrittenPrompt}</p>
                         </div>
@@ -685,23 +752,47 @@ export default function App() {
               placeholder="Paste your prompt here... (e.g., 'Write a story about a cat')"
               className="w-full h-40 bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none"
             />
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !input.trim()}
-              className="absolute bottom-4 right-4 bg-zinc-900 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  Analyze Prompt
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
+            
+            <div className="mt-4">
+              <label className="flex items-center gap-2 text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                <MessageSquare className="w-4 h-4" />
+                Additional Context (Optional)
+              </label>
+              <textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!loading && input.trim()) {
+                      handleAnalyze();
+                    }
+                  }
+                }}
+                placeholder="e.g., 'Target audience is 5-year-olds', 'Make it sound professional', 'I want to use this for a marketing email'"
+                className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-hidden transition-all resize-none"
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleAnalyze}
+                disabled={loading || !input.trim()}
+                className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    Analyze Prompt
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </section>
 
