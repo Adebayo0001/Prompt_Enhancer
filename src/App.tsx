@@ -168,7 +168,12 @@ export default function App() {
         setIsAuthModalOpen(false);
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Authentication failed');
+      console.error("Firebase Auth Error:", err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setAuthError('Email/Password sign-in is not enabled. Please enable it in the Firebase Console under Authentication > Sign-in method.');
+      } else {
+        setAuthError(err.message || 'Authentication failed');
+      }
     } finally {
       setAuthLoading(false);
     }
