@@ -341,7 +341,7 @@ export default function App() {
               <BrainCircuit className="text-white w-6 h-6" />
             </div>
             <h1 className="text-2xl font-display font-bold tracking-tight">
-              Prompt<span className="gradient-text">IQ</span>
+              Prompt <span className="gradient-text">Enhancer</span>
             </h1>
           </div>
           <div className="flex items-center gap-4 text-sm font-medium text-zinc-500">
@@ -397,7 +397,7 @@ export default function App() {
             transition={{ delay: 0.1 }}
             className="text-zinc-500 text-lg max-w-2xl mx-auto"
           >
-            Paste your prompt and let PromptIQ transform it into a masterpiece while teaching you the secrets of AI communication.
+            Paste your prompt and let Prompt Enhancer transform it into a masterpiece while teaching you the secrets of AI communication.
           </motion.p>
         </div>
 
