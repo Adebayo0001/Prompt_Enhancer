@@ -20,7 +20,8 @@ import {
   LogOut,
   History,
   X,
-  MessageSquare
+  MessageSquare,
+  ChevronDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { analyzePrompt, PromptAnalysis } from './services/geminiService';
@@ -110,6 +111,7 @@ export default function App() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
+  const [hasCopiedFirstPrompt, setHasCopiedFirstPrompt] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -247,6 +249,13 @@ export default function App() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    if (!user && !hasCopiedFirstPrompt) {
+      setHasCopiedFirstPrompt(true);
+      setTimeout(() => {
+        setIsAuthModalOpen(true);
+      }, 500);
+    }
   };
 
   return (
@@ -683,6 +692,30 @@ export default function App() {
                     </div>
                     <div className="bg-zinc-50 rounded-2xl p-6 text-zinc-700 font-mono text-sm leading-relaxed border border-zinc-100">
                       <ReactMarkdown>{result.rewrittenPrompt}</ReactMarkdown>
+                    </div>
+
+                    <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-zinc-100">
+                      <p className="text-sm font-medium text-zinc-500">Where would you like to use this prompt?</p>
+                      <div className="relative w-full sm:w-auto">
+                        <select 
+                          className="w-full sm:w-auto appearance-none bg-white border border-zinc-200 text-zinc-700 text-sm font-medium rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer shadow-sm hover:bg-zinc-50 transition-colors"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              window.open(e.target.value, '_blank');
+                              e.target.value = ''; // reset
+                            }
+                          }}
+                        >
+                          <option value="">Select an LLM...</option>
+                          <option value="https://chatgpt.com">ChatGPT</option>
+                          <option value="https://claude.ai">Claude</option>
+                          <option value="https://gemini.google.com">Gemini</option>
+                          <option value="https://www.perplexity.ai">Perplexity</option>
+                          <option value="https://www.meta.ai">Meta AI</option>
+                          <option value="https://x.com/i/grok">Grok</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
