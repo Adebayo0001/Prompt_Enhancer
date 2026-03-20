@@ -13,6 +13,7 @@ export const loginWithGoogle = async () => {
     await signInWithPopup(auth, googleProvider);
   } catch (error) {
     console.error("Error logging in with Google", error);
+    throw error;
   }
 };
 
