@@ -745,20 +745,45 @@ export default function App() {
                         <select 
                           className="w-full sm:w-auto appearance-none bg-white border border-zinc-200 text-zinc-700 text-sm font-medium rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer shadow-sm hover:bg-zinc-50 transition-colors"
                           onChange={(e) => {
-                            if (e.target.value) {
+                            const target = e.target.value;
+                            if (target) {
                               copyToClipboard(result.rewrittenPrompt);
-                              window.open(e.target.value, '_blank');
+                              const encodedPrompt = encodeURIComponent(result.rewrittenPrompt);
+                              let url = '';
+                              switch (target) {
+                                case 'chatgpt':
+                                  url = `https://chatgpt.com/?q=${encodedPrompt}`;
+                                  break;
+                                case 'perplexity':
+                                  url = `https://www.perplexity.ai/?q=${encodedPrompt}`;
+                                  break;
+                                case 'meta':
+                                  url = `https://www.meta.ai/?q=${encodedPrompt}`;
+                                  break;
+                                case 'grok':
+                                  url = `https://x.com/i/grok?text=${encodedPrompt}`;
+                                  break;
+                                case 'claude':
+                                  url = 'https://claude.ai/new';
+                                  break;
+                                case 'gemini':
+                                  url = 'https://gemini.google.com/app';
+                                  break;
+                                default:
+                                  url = target;
+                              }
+                              window.open(url, '_blank');
                               e.target.value = ''; // reset
                             }
                           }}
                         >
                           <option value="">Select an LLM...</option>
-                          <option value="https://chatgpt.com">ChatGPT</option>
-                          <option value="https://claude.ai">Claude</option>
-                          <option value="https://gemini.google.com">Gemini</option>
-                          <option value="https://www.perplexity.ai">Perplexity</option>
-                          <option value="https://www.meta.ai">Meta AI</option>
-                          <option value="https://x.com/i/grok">Grok</option>
+                          <option value="chatgpt">ChatGPT</option>
+                          <option value="claude">Claude</option>
+                          <option value="gemini">Gemini</option>
+                          <option value="perplexity">Perplexity</option>
+                          <option value="meta">Meta AI</option>
+                          <option value="grok">Grok</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                       </div>
