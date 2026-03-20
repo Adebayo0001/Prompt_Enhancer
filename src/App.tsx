@@ -112,6 +112,18 @@ export default function App() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
   const [hasCopiedFirstPrompt, setHasCopiedFirstPrompt] = useState(false);
+  const [hasInteractedWithUseCase, setHasInteractedWithUseCase] = useState(false);
+  const [showUseCaseHint, setShowUseCaseHint] = useState(false);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (showUseCaseHint) {
+      timeout = setTimeout(() => {
+        setShowUseCaseHint(false);
+      }, 4000);
+    }
+    return () => clearTimeout(timeout);
+  }, [showUseCaseHint]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -609,14 +621,37 @@ export default function App() {
         {/* Input Area */}
         <section className="glass rounded-3xl p-8 mb-12 shadow-xl shadow-zinc-200/50">
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+            <label className="flex items-center gap-3 text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
               Select Use Case
+              <AnimatePresence>
+                {showUseCaseHint && (
+                  <motion.span 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-md normal-case tracking-normal flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Tip: Pick a specific use case for better results!
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </label>
-            <div className="flex flex-wrap gap-2">
+            <motion.div 
+              className="flex flex-wrap gap-2"
+              animate={showUseCaseHint ? {
+                scale: [1, 1.01, 1],
+                transition: { duration: 0.8 }
+              } : {}}
+            >
               {USE_CASES.map((uc) => (
                 <button
                   key={uc.id}
-                  onClick={() => setUseCase(uc.id)}
+                  onClick={() => {
+                    setUseCase(uc.id);
+                    setHasInteractedWithUseCase(true);
+                    setShowUseCaseHint(false);
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     useCase === uc.id 
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
@@ -627,13 +662,18 @@ export default function App() {
                   {uc.label}
                 </button>
               ))}
-            </div>
+            </motion.div>
           </div>
 
           <div className="relative">
             <textarea
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (!hasInteractedWithUseCase && e.target.value.length > 5 && useCase === 'general') {
+                  setShowUseCaseHint(true);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
